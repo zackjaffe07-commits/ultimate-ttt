@@ -111,15 +111,22 @@ def profile():
 # --- Helper Functions ---
 def new_room(): return ''.join(random.choices(string.ascii_lowercase, k=5))
 def get_active_games(): return guest_games if session.get('is_guest') else games
+
 def emit_game_status(room):
     game_data = get_active_games().get(room)
     if game_data:
         status_data = {
             'player_count': len(game_data['player_accounts']),
-            'ready_players': [p['username'] for s, p in game_data['players'].items() if s in game_data['ready']],
-            'rematch_players': [p['username'] for s, p in game_data['players'].items() if s in game_data['rematchReady']]
+            'ready_players': [p['username'] for s, p in game_data['players'].items() if s in game_data.get('ready', set())],
+            'rematch_players': [p['username'] for s, p in game_data['players'].items() if s in game_data.get('rematchReady', set())]
         }
         emit('gameStatus', status_data, room=room)
+
+def emit_spectator_list(room):
+    game_data = get_active_games().get(room)
+    if game_data:
+        spectator_list = [spec['username'] for spec in game_data.get('spectators', {}).values()]
+        emit('spectatorList', {'spectators': spectator_list}, room=room)
 
 # --- SocketIO Events ---
 @socketio.on("create")
@@ -164,6 +171,7 @@ def join(data):
     if game_data.get("chat_history"): emit('chatHistory', {'history': game_data["chat_history"]})
     emit("state", game_data["game"].state(), room=room)
     emit_game_status(room)
+    emit_spectator_list(room)
 
 def record_match(game_data, winner_symbol):
     for user_id in game_data["player_accounts"].values(): active_players.discard(user_id)
@@ -201,8 +209,16 @@ def rematch(data):
     emit_game_status(room)
     if len(game_data["rematchReady"]) == 2:
         player_accounts = game_data["player_accounts"]
-        spectators = game_data["spectators"]
-        active_games[room] = { "game": UltimateTicTacToe(), "player_accounts": player_accounts, "players": {}, "spectators": spectators, "ready": set(), "rematchReady": set(), "chat_history": [] }
+        # Reset the game for the same players
+        active_games[room] = {
+            "game": UltimateTicTacToe(),
+            "player_accounts": player_accounts,
+            "players": game_data["players"], # Keep current player sessions
+            "spectators": game_data["spectators"],
+            "ready": set(),
+            "rematchReady": set(),
+            "chat_history": game_data["chat_history"]
+        }
         emit("rematchAgreed", room=room)
 
 @socketio.on('disconnect')
@@ -217,10 +233,10 @@ def disconnect():
             elif sid in game_data.get("spectators", {}):
                 del game_data["spectators"][sid]
                 leave_room(room)
-                emit_game_status(room) # Also update status when spectators leave
+                emit_spectator_list(room)
+                emit_game_status(room)
                 return
 
-# --- Other Events (chat, move, resign) ---
 @socketio.on('chat')
 @login_required
 def chat(data):
@@ -231,6 +247,7 @@ def chat(data):
     chat_entry = {'username': username, 'message': message, 'is_spectator': is_spectator}
     game_data["chat_history"].append(chat_entry)
     emit('chatMessage', chat_entry, room=room)
+
 @socketio.on("move")
 @login_required
 def move(data):
@@ -240,6 +257,7 @@ def move(data):
     if game.make_move(data["board"], data["cell"]):
         if game.game_winner: record_match(game_data, game.game_winner)
         emit("state", game.state(), room=data["room"])
+
 @socketio.on("resign")
 @login_required
 def resign(data):

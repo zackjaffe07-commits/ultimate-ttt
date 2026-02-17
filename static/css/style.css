@@ -25,6 +25,39 @@ body {
     min-height: calc(100vh - 40px);
 }
 
+/* ---------- VICTORY MODAL ---------- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background: white;
+    color: #222;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    animation: fadeInScale 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-content h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.modal-content p {
+    font-size: 1.2rem;
+    opacity: 0.7;
+}
+
 /* ---------- CARDS ---------- */
 .card {
     background: white;
@@ -170,7 +203,7 @@ input {
     list-style: none;
     max-height: 400px;
     overflow-y: auto;
-    padding-right: 10px; /* for scrollbar */
+    padding-right: 10px;
 }
 
 .match-item {
@@ -340,7 +373,8 @@ input {
 .overlay.X { color: #e74c3c; }
 .overlay.O { color: #3498db; }
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInScale { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
 
 .user-bar { padding: 10px; text-align: right; }
 .user-bar a { color: white; margin-left: 15px; }
