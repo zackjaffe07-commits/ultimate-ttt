@@ -1,13 +1,8 @@
 const socket = io();
 
-// Create or retrieve a persistent session ID
-let sid = sessionStorage.getItem("sid");
-if (!sid) {
-    sid = Math.random().toString(36).slice(2);
-    sessionStorage.setItem("sid", sid);
-}
-
-socket.emit("join", { room: ROOM, sid });
+// The server will now manage the session, so we just need to join.
+// The SID is handled on the server via the request context.
+socket.emit("join", { room: ROOM });
 
 let mySymbol = null;
 let isSpectator = false;
@@ -31,7 +26,7 @@ socket.on("assign", s => {
 socket.on("spectator", () => {
     isSpectator = true;
     playerText.textContent = "You are a spectator";
-    actionBtn.style.display = "none";
+    if(actionBtn) actionBtn.style.display = "none";
 });
 
 socket.on("spectatorCount", count => {
@@ -39,21 +34,22 @@ socket.on("spectatorCount", count => {
 });
 
 
-actionBtn.onclick = () => {
-    if (isSpectator) return;
+if(actionBtn) {
+    actionBtn.onclick = () => {
+        if (isSpectator) return;
 
-    if (actionBtn.textContent === "Start") {
-        socket.emit("ready", { room: ROOM, sid });
-        actionBtn.textContent = "Resign";
-    } else if (!gameEnded) {
-        // Resign -> lose
-        socket.emit("resign", { room: ROOM, symbol: mySymbol });
-    } else if (gameEnded && !rematchClicked) {
-        rematchClicked = true;
-        socket.emit("rematch", { room: ROOM, sid });
-        actionBtn.disabled = true;
-    }
-};
+        if (actionBtn.textContent === "Start") {
+            socket.emit("ready", { room: ROOM });
+            actionBtn.textContent = "Resign";
+        } else if (!gameEnded) {
+            socket.emit("resign", { room: ROOM, symbol: mySymbol });
+        } else if (gameEnded && !rematchClicked) {
+            rematchClicked = true;
+            socket.emit("rematch", { room: ROOM });
+            actionBtn.disabled = true;
+        }
+    };
+}
 
 socket.on("state", draw);
 
@@ -61,8 +57,10 @@ socket.on("rematchStarted", () => {
     if (isSpectator) return;
     rematchClicked = false;
     gameEnded = false;
-    actionBtn.disabled = false;
-    actionBtn.textContent = "Start";
+    if(actionBtn) {
+        actionBtn.disabled = false;
+        actionBtn.textContent = "Start";
+    }
 });
 
 function draw(state) {
@@ -73,15 +71,15 @@ function draw(state) {
         return;
     }
 
-    // If game has started, ensure button shows "Resign"
-    if (!isSpectator && !state.gameWinner) {
+    if (!isSpectator && actionBtn && !state.gameWinner) {
         actionBtn.textContent = "Resign";
     }
 
     if (state.gameWinner) {
         gameEnded = true;
-        if (!isSpectator) {
+        if (!isSpectator && actionBtn) {
             actionBtn.textContent = "Rematch";
+            actionBtn.disabled = false;
         }
         status.textContent =
             state.gameWinner === "D"

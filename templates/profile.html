@@ -1,30 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Profile</title>
+    <meta charset="UTF-8">
+    <title>{{ user.username }}'s Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
-    <h1>{{ user.username }}'s Profile</h1>
-    <h2>Stats</h2>
-    <p>Wins: {{ user.won_matches|length }}</p>
-    <p>Losses: {{ user.lost_matches|length }}</p>
+<body class="bg">
 
-    <h2>Match History</h2>
-    <ul>
-        {% for match in user.won_matches + user.lost_matches %}
-            <li>
-                {% if match.is_draw %}
-                    Draw
-                {% elif match.winner == user %}
-                    <strong>Win</strong> against {{ match.loser.username }}
-                {% else %}
-                    Loss against {{ match.winner.username }}
-                {% endif %}
-                - <span>{{ match.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
-            </li>
-        {% endfor %}
-    </ul>
-    <a href="{{ url_for('home') }}">Home</a>
+<div class="profile-layout">
+    <div class="card profile-card">
+        <div class="profile-header">
+            <h1>{{ user.username }}</h1>
+            <a href="{{ url_for('home') }}" class="button secondary small">Home</a>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h2>{{ user.won_matches|length }}</h2>
+                <p>Wins</p>
+            </div>
+            <div class="stat-item">
+                <h2>{{ user.lost_matches|length }}</h2>
+                <p>Losses</p>
+            </div>
+            <div class="stat-item">
+                <h2>{{ (user.won_matches|length) + (user.lost_matches|length) }}</h2>
+                <p>Total Games</p>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h2>Match History</h2>
+        <ul class="match-history">
+            {% for match in matches %}
+                <li class="match-item {% if match.is_draw %}draw{% elif match.winner == user %}win{% else %}loss{% endif %}">
+                    <div class="match-result">
+                        {% if match.is_draw %}
+                            Draw
+                        {% elif match.winner == user %}
+                            Win
+                        {% else %}
+                            Loss
+                        {% endif %}
+                    </div>
+                    <div class="match-opponent">
+                        vs.
+                        {% if match.winner == user %}
+                            {{ match.loser.username }}
+                        {% else %}
+                            {{ match.winner.username }}
+                        {% endif %}
+                    </div>
+                    <div class="match-timestamp">
+                        {{ match.timestamp.strftime('%b %d, %Y') }}
+                    </div>
+                </li>
+            {% else %}
+                <li>No matches played yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
 </body>
 </html>
