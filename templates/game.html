@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ultimate Tic Tac Toe</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg">
+
+<div class="game-layout">
+
+    <div class="top-bar">
+        <div>
+            <h2>Room {{ room }}</h2>
+            <p id="player" class="muted"></p>
+        </div>
+
+        <button id="action" class="primary small">Start</button>
+    </div>
+
+    <div class="status-card">
+        <p id="status">Waiting for players…</p>
+    </div>
+
+    <div class="board-wrapper">
+        <div id="board"></div>
+    </div>
+
+</div>
+
+<script>
+    const ROOM = "{{ room }}";
+</script>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="/static/js/game.js"></script>
+</body>
+</html>

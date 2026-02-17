@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ultimate Tic Tac Toe</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg">
+
+<div class="center">
+    <div class="card home-card">
+        <h1>Ultimate Tic Tac Toe</h1>
+        <p class="subtitle">A strategy game of games</p>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <button class="primary" id="create">Create Game</button>
+
+        <div class="divider">or</div>
+
+        <input id="room" placeholder="Enter room code">
+        <button class="secondary" id="join">Join Game</button>
+    </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="/static/js/home.js"></script>
+</body>
+</html>
