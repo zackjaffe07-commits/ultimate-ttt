@@ -24,7 +24,10 @@
             <p class="error">{{ error }}</p>
         {% endif %}
 
-        <button class="primary" id="create">Create Game</button>
+        <div class="home-actions">
+            <button class="primary" id="create">Create Game</button>
+            <a href="{{ url_for('rules') }}" class="button secondary">How to Play</a>
+        </div>
 
         <div class="divider">or</div>
 

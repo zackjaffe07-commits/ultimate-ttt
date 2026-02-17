@@ -196,20 +196,71 @@ input {
 
 
 /* ---------- GAME ---------- */
-/* ... (existing game styles remain the same) ... */
-#board { display: grid; grid-template-columns: repeat(3, auto); gap: 12px; }
-.mini-board { position: relative; display: grid; grid-template-columns: repeat(3, 56px); gap: 2px; background: rgba(255,255,255,0.35); border-radius: 12px; padding: 4px; transition: box-shadow 0.3s ease; }
-.mini-board.forced { box-shadow: 0 0 0 3px #ffd700; }
-.mini-board.won { animation: pulse 1s infinite alternate; }
-.cell { width: 56px; height: 56px; background: rgba(0,0,0,0.25); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 28px; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; }
-.cell:hover { background: rgba(255,255,255,0.2); }
-.cell:active { transform: scale(0.92); }
-.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 120px; opacity: 0.25; pointer-events: none; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pulse { from { box-shadow: 0 0 10px rgba(255,255,255,0.4); } to { box-shadow: 0 0 24px rgba(255,255,255,0.8); } }
-.user-bar { padding: 10px; text-align: right; }
-.user-bar a { color: white; margin-left: 15px; }
 .game-layout { max-width: 600px; margin: 0 auto; padding: 24px; }
 .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .status-card { background: rgba(255,255,255,0.15); padding: 12px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
 .board-wrapper { display: flex; justify-content: center; }
+#board { display: grid; grid-template-columns: repeat(3, auto); gap: 12px; }
+
+/* ---------- MINI BOARDS ---------- */
+.mini-board {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    gap: 2px;
+    background: rgba(255,255,255,0.35);
+    border-radius: 12px;
+    padding: 4px;
+    transition: box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+.mini-board.forced { box-shadow: 0 0 0 3px #ffd700; }
+
+/* Won states for mini-boards */
+.mini-board.won-X { background-color: rgba(255, 82, 82, 0.3); }
+.mini-board.won-O { background-color: rgba(52, 152, 219, 0.3); }
+
+/* ---------- CELLS ---------- */
+.cell {
+    width: 56px;
+    height: 56px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 28px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.cell:hover { background: rgba(255,255,255,0.2); }
+.cell:active { transform: scale(0.92); }
+
+/* Symbol Colors */
+.cell.X { color: #e74c3c; }
+.cell.O { color: #3498db; }
+
+/* ---------- OVERLAY ---------- */
+.overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 120px;
+    font-weight: 900;
+    pointer-events: none;
+    opacity: 0.8;
+    text-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+.overlay.X { color: #e74c3c; }
+.overlay.O { color: #3498db; }
+
+
+/* ---------- ANIMATIONS ---------- */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.user-bar { padding: 10px; text-align: right; }
+.user-bar a { color: white; margin-left: 15px; }

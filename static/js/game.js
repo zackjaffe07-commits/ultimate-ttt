@@ -94,16 +94,23 @@ function draw(state) {
         mini.className = "mini-board";
 
         if (state.winners[b] && state.winners[b] !== "D") {
-            mini.classList.add("won");
-            mini.innerHTML = `<span class="overlay">${state.winners[b]}</span>`;
+            mini.classList.add(`won-${state.winners[b]}`);
+            const overlay = document.createElement("span");
+            overlay.className = `overlay ${state.winners[b]}`;
+            overlay.textContent = state.winners[b];
+            mini.appendChild(overlay);
         }
 
         if (state.forced === b) mini.classList.add("forced");
 
         for (let c = 0; c < 9; c++) {
             const cell = document.createElement("div");
+            const symbol = state.boards[b][c];
             cell.className = "cell";
-            cell.textContent = state.boards[b][c] || "";
+            if (symbol) {
+                cell.classList.add(symbol);
+                cell.textContent = symbol;
+            }
 
             cell.onclick = () => {
                 if (!isSpectator && mySymbol === state.player && !state.gameWinner) {

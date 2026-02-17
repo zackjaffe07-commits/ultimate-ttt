@@ -63,6 +63,10 @@ def load_user(user_id):
 def landing():
     return render_template('landing.html')
 
+@app.route('/rules')
+def rules():
+    return render_template('rules.html')
+
 @app.route('/guest')
 def guest_login():
     if 'guest_id' not in session:
@@ -172,16 +176,13 @@ def join(data):
     players = game_data["players"]
     user_id = current_user.get_id()
     
-    # Find if user is already in the game (reconnecting)
     old_sid = next((s for s, p in players.items() if p.get('user_id') == user_id), None)
 
     if old_sid:
-        # Player is rejoining, update their sid
         if old_sid != sid:
             players[sid] = players.pop(old_sid)
         emit("assign", players[sid]["symbol"])
     else:
-        # New player is joining
         if len(players) < 2:
             symbol = "X" if len(players) == 0 else "O"
             players[sid] = {"symbol": symbol, "user_id": user_id, "username": current_user.username}
@@ -199,7 +200,7 @@ def record_match(game_data, winner_symbol):
     p1 = User.query.get(player_list[0]['user_id'])
     p2 = User.query.get(player_list[1]['user_id'])
 
-    if not p1 or not p2: return # Ensure both players are actual users
+    if not p1 or not p2: return
 
     if winner_symbol == "D":
         match = Match(winner=p1, loser=p2, is_draw=True)
@@ -282,13 +283,6 @@ def disconnect():
     sid = request.sid
     for g in [games, guest_games]:
         for room, game_data in list(g.items()):
-            # Handle player leaving
-            if sid in game_data["players"]:
-                # For simplicity, we can end the game if a player disconnects.
-                # A more advanced implementation could allow reconnection for a short period.
-                pass # The robust join logic now handles reconnection.
-
-            # Handle spectator leaving
             if sid in game_data["spectators"]:
                 game_data["spectators"].remove(sid)
                 leave_room(room)
