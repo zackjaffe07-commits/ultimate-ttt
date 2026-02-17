@@ -3,36 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <title>Ultimate Tic Tac Toe</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="bg">
 
-<div class="game-layout">
-
-    <div class="top-bar">
-        <div>
-            <h2>Room: {{ room }}</h2>
-            <p id="player" class="muted"></p>
+<div class="game-page-layout">
+    <div class="game-container">
+        <div class="top-bar">
+            <div>
+                <h2>Room: {{ room }}</h2>
+                <p id="player" class="muted"></p>
+            </div>
+            <button id="action" class="button primary small">Start</button>
+            <div id="post-game-actions" style="display: none;">
+                <button id="rematch-btn" class="button primary small">Rematch</button>
+                <a href="{{ url_for('home') }}" id="home-btn" class="button secondary small">Home</a>
+            </div>
         </div>
 
-        <button id="action" class="primary small">Start</button>
+        <div class="status-card">
+            <p id="status">Waiting for players…</p>
+        </div>
+
+        <div class="board-wrapper">
+            <div id="board"></div>
+        </div>
     </div>
 
-    <div class="status-card">
-        <p id="status">Waiting for players…</p>
+    <div class="sidebar">
+        <div class="card sidebar-card">
+            <h3>Spectators</h3>
+            <ul id="spectator-list">
+                <!-- Spectators will be listed here -->
+            </ul>
+        </div>
+        <div class="card sidebar-card chat-card">
+            <h3>Chat</h3>
+            <div id="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Say something...">
+                <button id="send-chat-btn" class="button primary small">Send</button>
+            </div>
+            <div class="mute-controls">
+                <label><input type="checkbox" id="mute-opponent"> Mute Opponent</label>
+                <label><input type="checkbox" id="mute-spectators"> Mute Spectators</label>
+            </div>
+        </div>
     </div>
-
-    <div class="board-wrapper">
-        <div id="board"></div>
-    </div>
-
 </div>
+
 
 <script>
     const ROOM = "{{ room }}";
 </script>
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script src="/static/js/game.js"></script>
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
 </body>
 </html>
