@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <h1>{{ user.username }}'s Profile</h1>
+    <h2>Stats</h2>
+    <p>Wins: {{ user.won_matches|length }}</p>
+    <p>Losses: {{ user.lost_matches|length }}</p>
+
+    <h2>Match History</h2>
+    <ul>
+        {% for match in user.won_matches + user.lost_matches %}
+            <li>
+                {% if match.is_draw %}
+                    Draw
+                {% elif match.winner == user %}
+                    <strong>Win</strong> against {{ match.loser.username }}
+                {% else %}
+                    Loss against {{ match.winner.username }}
+                {% endif %}
+                - <span>{{ match.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('home') }}">Home</a>
+</body>
+</html>

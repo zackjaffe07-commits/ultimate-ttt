@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Ultimate Tic Tac Toe</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="bg">
+
+<div class="user-bar">
+    <span>Welcome, {{ current_user.username }}!</span>
+    <a href="{{ url_for('profile') }}">Profile</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
+</div>
 
 <div class="center">
     <div class="card home-card">
@@ -26,6 +32,6 @@
 </div>
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script src="/static/js/home.js"></script>
+<script src="{{ url_for('static', filename='js/home.js') }}"></script>
 </body>
 </html>
