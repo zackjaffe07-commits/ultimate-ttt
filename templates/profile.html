@@ -16,16 +16,16 @@
 
         <div class="stats-grid">
             <div class="stat-item">
-                <h2>{{ user.won_matches|length }}</h2>
+                <h2>{{ wins }}</h2>
                 <p>Wins</p>
             </div>
             <div class="stat-item">
-                <h2>{{ user.lost_matches|length }}</h2>
+                <h2>{{ losses }}</h2>
                 <p>Losses</p>
             </div>
             <div class="stat-item">
-                <h2>{{ (user.won_matches|length) + (user.lost_matches|length) }}</h2>
-                <p>Total Games</p>
+                <h2>{{ draws }}</h2>
+                <p>Draws</p>
             </div>
         </div>
 
@@ -34,24 +34,30 @@
         <h2>Match History</h2>
         <ul class="match-history">
             {% for match in matches %}
-                <li class="match-item {% if match.is_draw %}draw{% elif match.winner == user %}win{% else %}loss{% endif %}">
+                <li class="match-item
+                    {% if match.is_draw %}draw
+                    {% elif match.winner_id == user.id %}win
+                    {% else %}loss{% endif %}">
+
                     <div class="match-result">
                         {% if match.is_draw %}
                             Draw
-                        {% elif match.winner == user %}
+                        {% elif match.winner_id == user.id %}
                             Win
                         {% else %}
                             Loss
                         {% endif %}
                     </div>
+
                     <div class="match-opponent">
                         vs.
-                        {% if match.winner == user %}
-                            {{ match.loser.username }}
+                        {% if match.player1_id == user.id %}
+                            {{ match.player2.username }}
                         {% else %}
-                            {{ match.winner.username }}
+                            {{ match.player1.username }}
                         {% endif %}
                     </div>
+
                     <div class="match-timestamp">
                         {{ match.timestamp.strftime('%b %d, %Y') }}
                     </div>

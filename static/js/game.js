@@ -14,6 +14,8 @@ const status = document.getElementById("status");
 const playerText = document.getElementById("player");
 const actionBtn = document.getElementById("action");
 const postGameDiv = document.getElementById("post-game-actions");
+const rematchBtn = document.getElementById('rematch-btn');
+const homeBtn = document.getElementById('home-btn');
 const spectatorList = document.getElementById("spectator-list");
 const chatMessages = document.getElementById("chat-messages");
 const chatInput = document.getElementById("chat-input");
@@ -46,37 +48,28 @@ socket.on("spectator", () => {
     playerText.textContent = "You are a spectator";
     if(actionBtn) actionBtn.style.display = "none";
 });
-socket.on("state", (newState) => { gameState = newState; draw(gameState); });
+socket.on("state", (newState) => { gameState = newState; draw(newState); });
 
-socket.on("gameStatus", data => {
-    myUsername = document.body.dataset.username;
-    const { player_count, ready_players, rematch_players } = data;
-
-    if (!gameState.started) {
-        if (player_count < 2) {
-            status.textContent = "Waiting for an opponent...";
-        } else {
-            const iAmReady = ready_players.includes(myUsername);
-            if (iAmReady) {
-                status.textContent = "Waiting for opponent to start...";
-            } else {
-                status.textContent = "Opponent has joined! Click start when ready.";
-            }
+socket.on("gameStatus", (data) => {
+    status.textContent = data.text;
+    if (data.button_action) {
+        actionBtn.style.display = 'inline-block';
+        postGameDiv.style.display = 'none';
+        switch(data.button_action) {
+            case 'start': actionBtn.textContent = 'Start'; actionBtn.disabled = false; break;
+            case 'waiting': actionBtn.textContent = 'Waiting...'; actionBtn.disabled = true; break;
+            case 'resign': actionBtn.textContent = 'Resign'; actionBtn.disabled = false; break;
+            case 'hidden': actionBtn.style.display = 'none'; break;
         }
-    } else if (gameEnded) {
-        const iWantRematch = rematch_players.includes(myUsername);
-        const opponentWantsRematch = rematch_players.length > 0 && !iWantRematch;
-        const rematchBtn = document.getElementById('rematch-btn');
-
-        if (iWantRematch) {
-            rematchBtn.textContent = "Waiting for Opponent...";
-            rematchBtn.disabled = true;
-        } else if (opponentWantsRematch) {
-            rematchBtn.textContent = "Opponent wants a rematch!";
-            rematchBtn.disabled = false;
-        } else {
-            rematchBtn.textContent = "Rematch";
-            rematchBtn.disabled = false;
+    }
+    if (data.button_rematch) {
+        actionBtn.style.display = 'none';
+        postGameDiv.style.display = 'flex';
+        switch(data.button_rematch) {
+            case 'rematch': rematchBtn.textContent = 'Rematch'; rematchBtn.disabled = false; break;
+            case 'waiting': rematchBtn.textContent = 'Waiting...'; rematchBtn.disabled = true; break;
+            case 'prompted': rematchBtn.textContent = 'Opponent wants a rematch!'; rematchBtn.disabled = false; break;
+            case 'declined': rematchBtn.textContent = 'Opponent Left'; rematchBtn.disabled = true; break;
         }
     }
 });
@@ -101,6 +94,7 @@ socket.on("spectatorList", data => {
 });
 
 function renderMessage(data) {
+    myUsername = document.body.dataset.username;
     const isMyMsg = data.username === myUsername;
     const isSpectatorMsg = data.is_spectator;
     const isOpponentMsg = !isMyMsg && !isSpectatorMsg;
@@ -112,11 +106,9 @@ function renderMessage(data) {
 
     const msgDiv = document.createElement("div");
     msgDiv.classList.add("chat-message");
-
     const userSpan = document.createElement("span");
     userSpan.className = "username";
     userSpan.textContent = data.username;
-
     msgDiv.appendChild(userSpan);
 
     if (data.is_spectator) {
@@ -132,7 +124,6 @@ function renderMessage(data) {
 }
 
 socket.on("chatMessage", renderMessage);
-
 socket.on("chatHistory", data => {
     chatMessages.innerHTML = '';
     data.history.forEach(renderMessage);
@@ -149,50 +140,30 @@ function sendChatMessage() {
 sendChatBtn.onclick = sendChatMessage;
 chatInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); sendChatMessage(); } };
 
-if(actionBtn) {
-    actionBtn.onclick = () => {
-        if (isSpectator) return;
-        if (actionBtn.textContent === "Start") {
-            socket.emit("ready", { room: ROOM });
-        } else if (!gameEnded) {
-            socket.emit("resign", { room: ROOM, symbol: mySymbol });
-        }
-    };
-}
-document.getElementById('rematch-btn').onclick = () => { socket.emit("rematch", { room: ROOM }); };
-document.getElementById('home-btn').onclick = () => { window.location.href = "/home"; };
+actionBtn.onclick = () => {
+    if (isSpectator) return;
+    if (actionBtn.textContent === "Start") {
+        socket.emit("ready", { room: ROOM });
+    } else if (actionBtn.textContent === "Resign") {
+        socket.emit("resign", { room: ROOM, symbol: mySymbol });
+    }
+};
+rematchBtn.onclick = () => { socket.emit("rematch", { room: ROOM }); };
+homeBtn.onclick = () => {
+    if (gameEnded) {
+        socket.emit("leave_post_game", { room: ROOM });
+    }
+    window.location.href = "/home";
+};
 
 // --- Main Draw Function ---
 function draw(state) {
     boardDiv.innerHTML = "";
 
-    if (!state.started) {
-        actionBtn.style.display = 'inline-block';
-        actionBtn.textContent = 'Start';
-        postGameDiv.style.display = 'none';
-        return;
+    if (state.gameWinner && !gameEnded) {
+        showVictoryAnimation(state.gameWinner);
     }
-
-    if (state.gameWinner) {
-        if (!gameEnded) {
-            showVictoryAnimation(state.gameWinner);
-        }
-        gameEnded = true;
-        if (!isSpectator) {
-            actionBtn.style.display = "none";
-            postGameDiv.style.display = "flex";
-        }
-        status.textContent = state.gameWinner === "D" ? "Draw!" : `${state.gameWinner} wins!`;
-    }
-    else {
-        gameEnded = false;
-        if (!isSpectator) {
-            actionBtn.style.display = 'inline-block';
-            actionBtn.textContent = "Resign";
-            postGameDiv.style.display = 'none';
-        }
-        status.textContent = `Turn: ${state.player}`;
-    }
+    gameEnded = !!state.gameWinner;
 
     for (let b = 0; b < 9; b++) {
         const mini = document.createElement("div");
@@ -228,6 +199,7 @@ function draw(state) {
 }
 
 function showVictoryAnimation(winner) {
+    myUsername = document.body.dataset.username;
     if (winner === "D") {
         victoryText.textContent = "Draw!";
         victorySubtext.textContent = "A hard-fought battle.";
@@ -242,14 +214,6 @@ function showVictoryAnimation(winner) {
         playSound('gameLose');
     }
     victoryModal.style.display = "flex";
-
-    // Hide modal after 3 seconds
-    setTimeout(() => {
-        victoryModal.style.display = "none";
-    }, 3000);
+    setTimeout(() => { victoryModal.style.display = "none"; }, 3000);
 }
-
-// Hide modal when clicking the overlay
-victoryModal.onclick = () => {
-    victoryModal.style.display = "none";
-};
+victoryModal.onclick = () => { victoryModal.style.display = "none"; };

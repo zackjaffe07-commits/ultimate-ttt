@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.orm import joinedload
+from sqlalchemy import or_
 from game.logic import UltimateTicTacToe
 import random, string, os
 
@@ -31,12 +31,14 @@ class User(UserMixin, db.Model):
 
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    winner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    loser_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    is_draw = db.Column(db.Boolean, default=False)
+    player1_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    player2_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    winner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    is_draw = db.Column(db.Boolean, default=False, nullable=False)
     timestamp = db.Column(db.DateTime, server_default=db.func.now())
-    winner = db.relationship('User', foreign_keys=[winner_id], backref='won_matches')
-    loser = db.relationship('User', foreign_keys=[loser_id], backref='lost_matches')
+    player1 = db.relationship('User', foreign_keys=[player1_id])
+    player2 = db.relationship('User', foreign_keys=[player2_id])
+    winner = db.relationship('User', foreign_keys=[winner_id])
 
 class GuestUser(UserMixin):
     def __init__(self, user_id):
@@ -104,23 +106,57 @@ def game(room):
 @app.route("/profile")
 @login_required
 def profile():
-    if session.get('is_guest'): flash("Guests do not have profiles."); return redirect(url_for('home'))
-    matches = Match.query.filter((Match.winner_id == current_user.id) | (Match.loser_id == current_user.id)).order_by(Match.timestamp.desc()).all()
-    return render_template("profile.html", user=current_user, matches=matches)
+    if session.get('is_guest'):
+        flash("Guests do not have profiles."); return redirect(url_for('home'))
+    user_id = current_user.id
+    wins = Match.query.filter_by(winner_id=user_id).count()
+    draws = Match.query.filter(or_(Match.player1_id == user_id, Match.player2_id == user_id), Match.is_draw==True).count()
+    total_matches = Match.query.filter(or_(Match.player1_id == user_id, Match.player2_id == user_id)).count()
+    losses = total_matches - wins - draws
+    matches = Match.query.filter(or_(Match.player1_id == user_id, Match.player2_id == user_id)).order_by(Match.timestamp.desc()).all()
+    return render_template("profile.html", user=current_user, matches=matches, wins=wins, losses=losses, draws=draws)
 
 # --- Helper Functions ---
 def new_room(): return ''.join(random.choices(string.ascii_lowercase, k=5))
 def get_active_games(): return guest_games if session.get('is_guest') else games
 
-def emit_game_status(room):
+def emit_game_status(room, sid=None):
     game_data = get_active_games().get(room)
-    if game_data:
-        status_data = {
-            'player_count': len(game_data['player_accounts']),
-            'ready_players': [p['username'] for s, p in game_data['players'].items() if s in game_data.get('ready', set())],
-            'rematch_players': [p['username'] for s, p in game_data['players'].items() if s in game_data.get('rematchReady', set())]
-        }
-        emit('gameStatus', status_data, room=room)
+    if not game_data: return
+    
+    for player_sid in game_data['players']:
+        is_current_player = player_sid == sid if sid else player_sid == request.sid
+        player_username = game_data['players'][player_sid]['username']
+        status_payload = {}
+
+        if not game_data['game'].started:
+            if len(game_data['player_accounts']) < 2:
+                status_payload['text'] = "Waiting for an opponent..."
+                status_payload['button_action'] = 'hidden'
+            else:
+                ready_sids = game_data.get('ready', set())
+                if player_sid in ready_sids:
+                    status_payload['text'] = "Waiting for opponent to start..."
+                    status_payload['button_action'] = 'waiting'
+                else:
+                    status_payload['text'] = "Opponent has joined! Click start when ready."
+                    status_payload['button_action'] = 'start'
+        elif game_data['game'].game_winner:
+            status_payload['text'] = f"{game_data['game'].game_winner} wins!" if game_data['game'].game_winner != "D" else "Draw!"
+            rematch_sids = game_data.get('rematchReady', set())
+            if game_data.get('rematch_declined'):
+                status_payload['button_rematch'] = 'declined'
+            elif player_sid in rematch_sids:
+                status_payload['button_rematch'] = 'waiting'
+            elif len(rematch_sids) > 0:
+                status_payload['button_rematch'] = 'prompted'
+            else:
+                status_payload['button_rematch'] = 'rematch'
+        else:
+            status_payload['text'] = f"Turn: {game_data['game'].current_player}"
+            status_payload['button_action'] = 'resign'
+        
+        emit('gameStatus', status_payload, room=player_sid)
 
 def emit_spectator_list(room):
     game_data = get_active_games().get(room)
@@ -136,7 +172,7 @@ def create():
         emit('already_in_game', {'error': 'You are already in a game.'}); return
     active_games = get_active_games()
     room = new_room()
-    active_games[room] = { "game": UltimateTicTacToe(), "player_accounts": {}, "players": {}, "spectators": {}, "ready": set(), "rematchReady": set(), "chat_history": [] }
+    active_games[room] = { "game": UltimateTicTacToe(), "player_accounts": {}, "players": {}, "spectators": {}, "ready": set(), "rematchReady": set(), "chat_history": [], "rematch_declined": False }
     emit("created", room)
 
 @socketio.on("join")
@@ -177,14 +213,11 @@ def record_match(game_data, winner_symbol):
     for user_id in game_data["player_accounts"].values(): active_players.discard(user_id)
     if session.get('is_guest') or len(game_data["player_accounts"]) < 2: return
     p1_id = game_data["player_accounts"]["X"]; p2_id = game_data["player_accounts"]["O"]
-    p1 = User.query.get(p1_id); p2 = User.query.get(p2_id)
-    if not p1 or not p2: return
-    if winner_symbol == "D": match = Match(winner=p1, loser=p2, is_draw=True)
+    if winner_symbol == "D":
+        match = Match(player1_id=p1_id, player2_id=p2_id, winner_id=None, is_draw=True)
     else:
         winner_id = game_data["player_accounts"][winner_symbol]
-        loser_symbol = "X" if winner_symbol == "O" else "O"
-        loser_id = game_data["player_accounts"][loser_symbol]
-        match = Match(winner_id=winner_id, loser_id=loser_id, is_draw=False)
+        match = Match(player1_id=p1_id, player2_id=p2_id, winner_id=winner_id, is_draw=False)
     db.session.add(match); db.session.commit()
 
 @socketio.on("ready")
@@ -194,32 +227,37 @@ def ready(data):
     game_data = active_games.get(room)
     if not game_data or sid not in game_data["players"]: return
     game_data["ready"].add(sid)
-    emit_game_status(room)
     if len(game_data["player_accounts"]) == 2 and len(game_data["ready"]) == 2:
         game_data["game"].started = True
         emit("state", game_data["game"].state(), room=room)
+    emit_game_status(room)
 
 @socketio.on("rematch")
 @login_required
 def rematch(data):
     active_games = get_active_games(); room = data["room"]; sid = request.sid
     game_data = active_games.get(room)
-    if not game_data or sid not in game_data["players"]: return
+    if not game_data or sid not in game_data["players"] or game_data.get('rematch_declined'): return
     game_data["rematchReady"].add(sid)
-    emit_game_status(room)
     if len(game_data["rematchReady"]) == 2:
         player_accounts = game_data["player_accounts"]
-        # Reset the game for the same players
         active_games[room] = {
-            "game": UltimateTicTacToe(),
-            "player_accounts": player_accounts,
-            "players": game_data["players"], # Keep current player sessions
-            "spectators": game_data["spectators"],
-            "ready": set(),
-            "rematchReady": set(),
-            "chat_history": game_data["chat_history"]
+            "game": UltimateTicTacToe(), "player_accounts": player_accounts,
+            "players": game_data["players"], "spectators": game_data["spectators"],
+            "ready": set(), "rematchReady": set(), "chat_history": game_data.get("chat_history", []), "rematch_declined": False
         }
         emit("rematchAgreed", room=room)
+        emit("state", active_games[room]["game"].state(), room=room)
+    emit_game_status(room)
+
+@socketio.on("leave_post_game")
+@login_required
+def leave_post_game(data):
+    active_games = get_active_games(); room = data["room"]
+    game_data = active_games.get(room)
+    if not game_data: return
+    game_data['rematch_declined'] = True
+    emit_game_status(room)
 
 @socketio.on('disconnect')
 def disconnect():
@@ -228,13 +266,14 @@ def disconnect():
         for room, game_data in list(g.items()):
             if sid in game_data.get("players", {}):
                 del game_data["players"][sid]
+                if game_data['game'].game_winner: # If game is over, treat as leaving post-game
+                    game_data['rematch_declined'] = True
                 emit_game_status(room)
                 return
             elif sid in game_data.get("spectators", {}):
                 del game_data["spectators"][sid]
                 leave_room(room)
                 emit_spectator_list(room)
-                emit_game_status(room)
                 return
 
 @socketio.on('chat')
@@ -255,8 +294,10 @@ def move(data):
     if not game_data: return
     game = game_data["game"]
     if game.make_move(data["board"], data["cell"]):
-        if game.game_winner: record_match(game_data, game.game_winner)
+        if game.game_winner:
+            record_match(game_data, game.game_winner)
         emit("state", game.state(), room=data["room"])
+        emit_game_status(data["room"])
 
 @socketio.on("resign")
 @login_required
@@ -268,6 +309,7 @@ def resign(data):
     game.resign(loser_symbol)
     record_match(game_data, winner_symbol)
     emit("state", game.state(), room=data["room"])
+    emit_game_status(data["room"])
 
 if __name__ == "__main__":
     with app.app_context():

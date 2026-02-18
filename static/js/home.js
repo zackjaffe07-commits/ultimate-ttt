@@ -5,27 +5,34 @@ document.getElementById("create").onclick = () => {
 };
 
 socket.on("created", room => {
-    window.location = `/game/${room}`;
+    window.location.href = `/game/${room}`;
 });
 
 document.getElementById("join").onclick = () => {
     const room = document.getElementById("room").value;
     if (room) {
-        // We don't know if the user is in a game yet, so we just navigate.
-        // The server will handle the error if they try to join.
-        // A better implementation might check with the server first.
-        window.location = `/game/${room}`;
+        window.location.href = `/game/${room}`;
     }
 };
 
 socket.on('already_in_game', (data) => {
-    // Find the error display area on the home page and show the message
-    const errorDiv = document.querySelector('.home-card .error');
-    if (errorDiv) {
-        errorDiv.textContent = data.error;
-        errorDiv.style.display = 'block';
-    } else {
-        // Fallback if the error div doesn't exist for some reason
-        alert(data.error);
+    const homeCard = document.querySelector('.home-card');
+    if (!homeCard) return;
+
+    // Find existing error div or create a new one
+    let errorDiv = homeCard.querySelector('.error');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'error';
+        // Insert it after the subtitle
+        const subtitle = homeCard.querySelector('.subtitle');
+        if (subtitle) {
+            subtitle.insertAdjacentElement('afterend', errorDiv);
+        } else {
+            homeCard.prepend(errorDiv);
+        }
     }
+
+    errorDiv.textContent = data.error;
+    errorDiv.style.display = 'block';
 });

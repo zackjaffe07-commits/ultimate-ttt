@@ -21,6 +21,25 @@ class UltimateTicTacToe:
             return "D"
         return None
 
+    def check_game_winner(self):
+        # Check for a standard win (3 in a row)
+        winner = self.check_win(self.board_winners)
+        if winner and winner != "D":
+            return winner
+
+        # If no 3-in-a-row, check for a full board tiebreaker
+        if all(self.board_winners):
+            x_wins = self.board_winners.count("X")
+            o_wins = self.board_winners.count("O")
+            if x_wins > o_wins:
+                return "X"
+            elif o_wins > x_wins:
+                return "O"
+            else:
+                return "D" # It's a true draw
+        
+        return None
+
     def make_move(self, b, c):
         if not self.started or self.game_winner:
             return False
@@ -33,10 +52,20 @@ class UltimateTicTacToe:
             return False
 
         self.boards[b][c] = self.current_player
-        self.board_winners[b] = self.check_win(self.boards[b])
-        self.game_winner = self.check_win(self.board_winners)
+        
+        # Check if this move wins the mini-board
+        if not self.board_winners[b]:
+            self.board_winners[b] = self.check_win(self.boards[b])
+        
+        # Check if this move wins the whole game
+        self.game_winner = self.check_game_winner()
 
-        self.forced_board = c if self.board_winners[c] is None else None
+        # Determine the next board
+        if self.board_winners[c] is None:
+            self.forced_board = c
+        else:
+            self.forced_board = None
+            
         self.current_player = "O" if self.current_player == "X" else "X"
         return True
 
@@ -52,4 +81,3 @@ class UltimateTicTacToe:
             "gameWinner": self.game_winner,
             "started": self.started
         }
-
