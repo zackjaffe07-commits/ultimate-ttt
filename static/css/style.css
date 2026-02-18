@@ -438,3 +438,26 @@ input {
 }
 .symbol.X { color: #e74c3c; }
 .symbol.O { color: #3498db; }
+
+/* ---------- MOBILE RESPONSIVENESS ---------- */
+@media (max-width: 768px) {
+    .game-page-layout {
+        flex-direction: column;
+    }
+    .game-container, .sidebar {
+        min-width: 100%;
+    }
+    .mini-board {
+        grid-template-columns: repeat(3, 8vw);
+        grid-template-rows: repeat(3, 8vw);
+    }
+    .cell {
+        font-size: 4vw;
+    }
+    .overlay {
+        font-size: 15vw;
+    }
+    #chat-messages {
+        height: 20vh;
+    }
+}
