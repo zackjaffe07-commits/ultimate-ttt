@@ -70,7 +70,8 @@ def guest_login():
 def login():
     if current_user.is_authenticated and not session.get('is_guest'): return redirect(url_for('home'))
     if request.method == 'POST':
-        user = User.query.filter_by(username=request.form['username']).first()
+        username = request.form['username'].lower()
+        user = User.query.filter_by(username=username).first()
         if user is None or not user.check_password(request.form['password']):
             flash('Invalid username or password'); return redirect(url_for('login'))
         login_user(user)
@@ -81,9 +82,10 @@ def login():
 def register():
     if current_user.is_authenticated and not session.get('is_guest'): return redirect(url_for('home'))
     if request.method == 'POST':
-        if User.query.filter_by(username=request.form['username']).first():
+        username = request.form['username'].lower()
+        if User.query.filter_by(username=username).first():
             flash('Username already exists'); return redirect(url_for('register'))
-        new_user = User(username=request.form['username']); new_user.set_password(request.form['password'])
+        new_user = User(username=username); new_user.set_password(request.form['password'])
         db.session.add(new_user); db.session.commit()
         login_user(new_user)
         session.pop('is_guest', None); session.pop('guest_id', None)
@@ -117,25 +119,24 @@ def profile():
     return render_template("profile.html", user=current_user, matches=matches, wins=wins, losses=losses, draws=draws)
 
 # --- Helper Functions ---
-def new_room(): return ''.join(random.choices(string.ascii_lowercase, k=5))
+def new_room(): return ''.join(random.choices(string.digits, k=5))
 def get_active_games(): return guest_games if session.get('is_guest') else games
 
-def emit_game_status(room, sid=None):
+def emit_game_status(room):
     game_data = get_active_games().get(room)
     if not game_data: return
-    
-    for player_sid in game_data['players']:
-        is_current_player = player_sid == sid if sid else player_sid == request.sid
-        player_username = game_data['players'][player_sid]['username']
-        status_payload = {}
-
+    base_payload = {
+        'players': {p['symbol']: p['username'] for p in game_data['players'].values()}
+    }
+    all_sids = list(game_data['players'].keys()) + list(game_data['spectators'].keys())
+    for sid in all_sids:
+        status_payload = base_payload.copy()
         if not game_data['game'].started:
             if len(game_data['player_accounts']) < 2:
                 status_payload['text'] = "Waiting for an opponent..."
                 status_payload['button_action'] = 'hidden'
             else:
-                ready_sids = game_data.get('ready', set())
-                if player_sid in ready_sids:
+                if sid in game_data.get('ready', set()):
                     status_payload['text'] = "Waiting for opponent to start..."
                     status_payload['button_action'] = 'waiting'
                 else:
@@ -143,20 +144,18 @@ def emit_game_status(room, sid=None):
                     status_payload['button_action'] = 'start'
         elif game_data['game'].game_winner:
             status_payload['text'] = f"{game_data['game'].game_winner} wins!" if game_data['game'].game_winner != "D" else "Draw!"
-            rematch_sids = game_data.get('rematchReady', set())
             if game_data.get('rematch_declined'):
                 status_payload['button_rematch'] = 'declined'
-            elif player_sid in rematch_sids:
+            elif sid in game_data.get('rematchReady', set()):
                 status_payload['button_rematch'] = 'waiting'
-            elif len(rematch_sids) > 0:
+            elif len(game_data.get('rematchReady', set())) > 0:
                 status_payload['button_rematch'] = 'prompted'
             else:
                 status_payload['button_rematch'] = 'rematch'
         else:
             status_payload['text'] = f"Turn: {game_data['game'].current_player}"
             status_payload['button_action'] = 'resign'
-        
-        emit('gameStatus', status_payload, room=player_sid)
+        emit('gameStatus', status_payload, room=sid)
 
 def emit_spectator_list(room):
     game_data = get_active_games().get(room)
@@ -266,7 +265,7 @@ def disconnect():
         for room, game_data in list(g.items()):
             if sid in game_data.get("players", {}):
                 del game_data["players"][sid]
-                if game_data['game'].game_winner: # If game is over, treat as leaving post-game
+                if game_data['game'].game_winner:
                     game_data['rematch_declined'] = True
                 emit_game_status(room)
                 return
@@ -282,8 +281,20 @@ def chat(data):
     room = data['room']; message = data['message']; username = current_user.username
     game_data = get_active_games().get(room)
     if not game_data: return
+    
     is_spectator = request.sid in game_data['spectators']
-    chat_entry = {'username': username, 'message': message, 'is_spectator': is_spectator}
+    player_symbol = None
+    if not is_spectator:
+        player_data = game_data['players'].get(request.sid)
+        if player_data:
+            player_symbol = player_data['symbol']
+
+    chat_entry = {
+        'username': username, 
+        'message': message, 
+        'is_spectator': is_spectator,
+        'symbol': player_symbol
+    }
     game_data["chat_history"].append(chat_entry)
     emit('chatMessage', chat_entry, room=room)
 

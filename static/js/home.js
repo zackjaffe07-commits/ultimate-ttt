@@ -1,6 +1,10 @@
 const socket = io();
 
-document.getElementById("create").onclick = () => {
+const createBtn = document.getElementById("create");
+const joinBtn = document.getElementById("join");
+const roomInput = document.getElementById("room");
+
+createBtn.onclick = () => {
     socket.emit("create");
 };
 
@@ -8,10 +12,18 @@ socket.on("created", room => {
     window.location.href = `/game/${room}`;
 });
 
-document.getElementById("join").onclick = () => {
-    const room = document.getElementById("room").value;
+function joinGame() {
+    const room = roomInput.value;
     if (room) {
         window.location.href = `/game/${room}`;
+    }
+}
+
+joinBtn.onclick = joinGame;
+
+roomInput.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+        joinGame();
     }
 };
 
@@ -19,12 +31,10 @@ socket.on('already_in_game', (data) => {
     const homeCard = document.querySelector('.home-card');
     if (!homeCard) return;
 
-    // Find existing error div or create a new one
     let errorDiv = homeCard.querySelector('.error');
     if (!errorDiv) {
         errorDiv = document.createElement('div');
         errorDiv.className = 'error';
-        // Insert it after the subtitle
         const subtitle = homeCard.querySelector('.subtitle');
         if (subtitle) {
             subtitle.insertAdjacentElement('afterend', errorDiv);

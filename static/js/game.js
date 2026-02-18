@@ -25,6 +25,8 @@ const muteSpectatorsCheck = document.getElementById("mute-spectators");
 const victoryModal = document.getElementById("victory-modal");
 const victoryText = document.getElementById("victory-text");
 const victorySubtext = document.getElementById("victory-subtext");
+const playerXDiv = document.getElementById("player-X");
+const playerODiv = document.getElementById("player-O");
 
 // --- Sound Effects ---
 const sounds = {
@@ -52,6 +54,7 @@ socket.on("state", (newState) => { gameState = newState; draw(newState); });
 
 socket.on("gameStatus", (data) => {
     status.textContent = data.text;
+    updatePlayerInfo(data.players);
     if (data.button_action) {
         actionBtn.style.display = 'inline-block';
         postGameDiv.style.display = 'none';
@@ -106,6 +109,14 @@ function renderMessage(data) {
 
     const msgDiv = document.createElement("div");
     msgDiv.classList.add("chat-message");
+
+    if (data.symbol) {
+        const symbolSpan = document.createElement("span");
+        symbolSpan.className = `chat-symbol ${data.symbol}`;
+        symbolSpan.textContent = data.symbol;
+        msgDiv.appendChild(symbolSpan);
+    }
+
     const userSpan = document.createElement("span");
     userSpan.className = "username";
     userSpan.textContent = data.username;
@@ -156,15 +167,27 @@ homeBtn.onclick = () => {
     window.location.href = "/home";
 };
 
-// --- Main Draw Function ---
+// --- Main Draw & UI Update Functions ---
+function updatePlayerInfo(players) {
+    myUsername = document.body.dataset.username;
+    const renderPlayer = (playerDiv, symbol, username) => {
+        let youTag = (username === myUsername && !isSpectator) ? '<div class="you-tag">You</div>' : '';
+        playerDiv.innerHTML = `
+            <div class="symbol ${symbol}">${symbol}</div>
+            <div class="username">${username || 'Waiting...'}</div>
+            ${youTag}
+        `;
+    };
+    renderPlayer(playerXDiv, 'X', players.X);
+    renderPlayer(playerODiv, 'O', players.O);
+}
+
 function draw(state) {
     boardDiv.innerHTML = "";
-
     if (state.gameWinner && !gameEnded) {
         showVictoryAnimation(state.gameWinner);
     }
     gameEnded = !!state.gameWinner;
-
     for (let b = 0; b < 9; b++) {
         const mini = document.createElement("div");
         mini.className = "mini-board";
