@@ -1,3 +1,6 @@
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_socketio import SocketIO, join_room, leave_room, emit
 from flask_sqlalchemy import SQLAlchemy
@@ -13,7 +16,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_secret_key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3')
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='gevent')
 login_manager = LoginManager(app)
 login_manager.login_view = 'landing'
 
@@ -323,6 +326,4 @@ def resign(data):
     emit_game_status(data["room"])
 
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True)

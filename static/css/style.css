@@ -448,19 +448,20 @@ input {
         min-width: 100%;
     }
     #board {
-        gap: 1.5vw; /* Tighter gap */
+        gap: 1.5vw;
     }
     .mini-board {
-        grid-template-columns: repeat(3, 8.5vw); /* Use vw for width */
-        grid-template-rows: repeat(3, 8.5vw);  /* Use vw for height */
+        grid-template-columns: repeat(3, 8.5vw);
+        grid-template-rows: repeat(3, 8.5vw);
         padding: 0.5vw;
+        border-radius: 8px;
     }
     .cell {
-        font-size: 4.5vw; /* Scale font with width */
+        font-size: 4.5vw;
         border-radius: 4px;
     }
     .overlay {
-        font-size: 16vw; /* Scale overlay with width */
+        font-size: 16vw;
     }
     #chat-messages {
         height: 20vh;
