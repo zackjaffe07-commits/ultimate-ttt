@@ -451,17 +451,21 @@ input {
         gap: 1.5vw;
     }
     .mini-board {
+        /* Base size on screen width, not height */
         grid-template-columns: repeat(3, 8.5vw);
         grid-template-rows: repeat(3, 8.5vw);
         padding: 0.5vw;
         border-radius: 8px;
+        /* Remove max-height/width on mobile */
+        max-width: none;
+        max-height: none;
     }
     .cell {
         font-size: 4.5vw;
         border-radius: 4px;
     }
     .overlay {
-        font-size: 12vw;
+        font-size: 15vw;
     }
     #chat-messages {
         height: 20vh;
