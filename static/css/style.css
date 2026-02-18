@@ -461,7 +461,7 @@ input {
         border-radius: 4px;
     }
     .overlay {
-        font-size: 16vw;
+        font-size: 12vw;
     }
     #chat-messages {
         height: 20vh;
