@@ -447,12 +447,18 @@ input {
     .game-container, .sidebar {
         min-width: 100%;
     }
+    #board {
+        gap: 6px;
+    }
     .mini-board {
         grid-template-columns: repeat(3, 8vw);
         grid-template-rows: repeat(3, 8vw);
+        padding: 2px;
+        border-radius: 8px;
     }
     .cell {
         font-size: 4vw;
+        border-radius: 4px;
     }
     .overlay {
         font-size: 15vw;
